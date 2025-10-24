@@ -1,5 +1,5 @@
 # Dockerfile for Qwen2.5-Coder-14B training on RTX 5090 (Without Flash Attention at build time)
-FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
+FROM nvidia/cuda:13.0.1-devel-ubuntu22.04
 
 # Build arguments
 ARG MAX_JOBS=1
