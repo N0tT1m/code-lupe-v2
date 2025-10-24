@@ -209,7 +209,7 @@ jobs:
 
       # Grype - Additional container scanner
       - name: Run Grype scanner
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v7
         with:
           image: 'codelupe-trainer:security-scan'
           fail-build: false
