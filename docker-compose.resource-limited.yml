@@ -1,0 +1,183 @@
+# Resource-limited configuration for Windows to prevent Docker daemon crashes
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.resource-limited.yml up
+#
+# CRITICAL: This setup requires at least 16GB RAM allocated to Docker Desktop
+# Recommended: 24GB+ RAM for full pipeline
+#
+# For monitoring only (no training): Use --scale trainer=0 --scale processor=0
+
+services:
+  # Databases - Reduced limits
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  mongodb:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # Elasticsearch - MAJOR memory consumer
+  elasticsearch:
+    environment:
+      # Drastically reduce from 2GB to 1GB for Windows stability
+      - "ES_JAVA_OPTS=-Xms512m -Xmx1g -XX:+UseG1GC"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  # Monitoring services
+  kibana:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  adminer:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  mongo-express:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # Pipeline services - Significantly reduced
+  crawler:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  downloader:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'          # Reduced from 4
+          memory: 2G           # Reduced from 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  processor:
+    environment:
+      - GOMAXPROCS=4         # Reduced from 14
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'          # Reduced from 14
+          memory: 4G           # Reduced from 16G
+        reservations:
+          cpus: '2.0'
+          memory: 2G
+
+  metrics-exporter:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Trainer - Still needs significant resources but reduced for stability
+  trainer:
+    environment:
+      # Reduce memory fragmentation
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256
+      # Limit CPU threads to prevent oversubscription
+      - OMP_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - GOMAXPROCS=4
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'          # Reduced from 14 to prevent CPU saturation
+          memory: 12G          # Reduced from 32G - GPU will use VRAM
+        reservations:
+          cpus: '4.0'
+          memory: 8G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+# TOTAL ESTIMATED USAGE WITH ALL SERVICES:
+# CPUs: ~25 cores max (reduce Docker Desktop allocation if needed)
+# RAM: ~25GB max
+#
+# MINIMUM Docker Desktop Settings:
+# - Memory: 16GB (for basic operation)
+# - CPUs: 8 cores
+# - Disk: 100GB
+#
+# RECOMMENDED Docker Desktop Settings:
+# - Memory: 24-32GB
+# - CPUs: 12-16 cores
+# - Disk: 200GB

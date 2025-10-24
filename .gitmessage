@@ -1,0 +1,52 @@
+# <type>(<scope>): <subject>
+# |<----  Using a maximum of 50 characters  ---->|
+
+# Explain why this change is being made
+# |<----   Try to limit each line to a maximum of 72 characters   ---->|
+
+# Provide links or keys to any relevant tickets, articles or other resources
+# Example: Fixes #23
+
+# --- COMMIT END ---
+# Type can be:
+#    feat     (new feature)
+#    fix      (bug fix)
+#    refactor (refactoring production code)
+#    style    (formatting, missing semi colons, etc; no code change)
+#    docs     (changes to documentation)
+#    test     (adding or refactoring tests; no production code change)
+#    chore    (updating build tasks, package manager configs, etc)
+#    perf     (performance improvements)
+#    ci       (changes to CI configuration files and scripts)
+#    build    (changes to build system or external dependencies)
+#    revert   (reverts a previous commit)
+# --------------------
+# Scope is optional and can be anything specifying the place of the commit change.
+# For example: crawler, downloader, trainer, api, ci, etc.
+# --------------------
+# Subject should use imperative tone and say what you did.
+# For example: "add feature" not "added feature" or "adds feature"
+# --------------------
+# Body should explain the motivation for the change and how it differs from
+# previous behavior. This commit message should be able to answer "why?".
+# --------------------
+# Footer should contain any BREAKING CHANGES and reference any issues/tickets.
+# Breaking changes should start with BREAKING CHANGE: and have space or two
+# newlines before the footer message.
+# --------------------
+# Examples:
+#
+# feat(crawler): add rate limiting for GitHub API
+#
+# The crawler now respects GitHub's rate limits by implementing
+# exponential backoff and request throttling.
+#
+# Fixes #42
+# --------------------
+# fix(trainer): resolve CUDA out of memory error
+#
+# Reduced batch size and implemented gradient accumulation
+# to fix OOM errors on RTX 5090 with large models.
+#
+# BREAKING CHANGE: Batch size reduced from 8 to 4
+# --------------------

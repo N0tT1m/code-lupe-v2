@@ -1,0 +1,395 @@
+
+services:
+  grafana:
+    image: grafana/grafana:main-ubuntu
+    container_name: codelupe-grafana
+    environment:
+      - GF_LOG_LEVEL=debug
+      - GF_PLUGINS_PREINSTALL=grafana-clock-panel, grafana-simple-json-datasource
+      - GF_SERVER_ROOT_URL=http://0.0.0.0:3000
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - codelupe-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:main
+    container_name: codelupe-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - codelupe-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: codelupe-elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=codelupe-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      # Optimized for faster startup and lower memory usage
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g -XX:+UseG1GC -XX:G1HeapRegionSize=16m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      # Performance optimizations
+      - indices.memory.index_buffer_size=30%
+      - indices.memory.min_index_buffer_size=96mb
+      - thread_pool.write.queue_size=1000
+      - cluster.routing.allocation.disk.threshold_enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - codelupe-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: codelupe-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - SERVER_HOST=0.0.0.0
+    ports:
+      - "5601:5601"
+    networks:
+      - codelupe-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: codelupe-postgres
+    environment:
+      - POSTGRES_DB=coding_db
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      # Performance optimizations
+      - POSTGRES_SHARED_BUFFERS=256MB
+      - POSTGRES_EFFECTIVE_CACHE_SIZE=1GB
+      - POSTGRES_MAINTENANCE_WORK_MEM=64MB
+      - POSTGRES_CHECKPOINT_COMPLETION_TARGET=0.9
+      - POSTGRES_WAL_BUFFERS=16MB
+      - POSTGRES_DEFAULT_STATISTICS_TARGET=100
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5433:5432"
+    networks:
+      - codelupe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coding_user -d coding_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  adminer:
+    image: adminer:4.8.1
+    container_name: codelupe-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+
+  redis:
+    image: redis:7-alpine
+    container_name: codelupe-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - codelupe-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongodb:
+    image: mongo:7
+    container_name: codelupe-mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin_pass
+      - MONGO_INITDB_DATABASE=coding_db
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - codelupe-network
+    command: mongod --wiredTigerCacheSizeGB 0.5 --quiet
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo-express:
+    image: mongo-express:1.0.0
+    container_name: codelupe-mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin_pass
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    ports:
+      - "8081:8081"
+    networks:
+      - codelupe-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile.crawler
+    container_name: codelupe-crawler
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    ports:
+      - "9092:9092"
+    networks:
+      - codelupe-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile.downloader
+    container_name: codelupe-downloader
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      - POSTGRES_DB=coding_db
+      - REPOS_DIR=/app/repos
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_TOKENS=${GITHUB_TOKENS}
+    ports:
+      - "9091:9091"
+    networks:
+      - codelupe-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "${HOST_REPOS_PATH}:/app/repos"
+      - ./logs:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep downloader || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.processor
+    container_name: codelupe-processor
+    environment:
+      - DATABASE_URL=postgres://coding_user:coding_pass@postgres:5432/coding_db?sslmode=disable
+      - REPOS_DIR=/app/repos
+      - GOMAXPROCS=14
+    ports:
+      - "9093:9093"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "${HOST_REPOS_PATH}:/app/repos"
+      - ./logs:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '14'
+          memory: 16G
+
+  metrics-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.metrics
+    container_name: codelupe-metrics
+    environment:
+      - DATABASE_URL=postgres://coding_user:coding_pass@postgres:5432/coding_db?sslmode=disable
+      - METRICS_PORT=9094
+    ports:
+      - "9094:9094"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9094/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.qwen-5090
+    container_name: codelupe-trainer
+    runtime: nvidia
+    environment:
+      # Database connection
+      - DATABASE_URL=postgres://coding_user:coding_pass@postgres:5432/coding_db
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=coding_db
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      # Hugging Face authentication
+      - HF_TOKEN=${HF_TOKEN}
+      # Training settings
+      - MIN_NEW_FILES=1000
+      - MAX_DATASET_SIZE=1000000
+      - CHECK_INTERVAL=60
+      - TRAINING_EPOCHS=1
+      - BATCH_SIZE=1
+      - GRADIENT_ACCUMULATION_STEPS=32
+      - LEARNING_RATE=1e-4
+      - LORA_R=128
+      - LORA_ALPHA=32
+      # NVIDIA/CUDA optimizations for RTX 5090
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_ALLOC_CONF=max_split_size_mb:512
+      - TORCH_CUDNN_V8_API_ENABLED=1
+      - CUDA_LAUNCH_BLOCKING=0
+      - PYTHONUNBUFFERED=1
+      # Flash Attention
+      - FLASH_ATTENTION_FORCE_BUILD=TRUE
+    ports:
+      - "8090:8090"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      processor:
+        condition: service_started
+    volumes:
+      - "${HOST_REPOS_PATH}:/app/repos"
+      - ./models:/app/models
+      - ./checkpoints:/app/checkpoints
+      - ./logs:/app/logs
+      - ./datasets:/app/datasets
+      - ./cache:/app/cache
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '14'
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import torch; print(torch.cuda.is_available())' || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+
+volumes:
+  elasticsearch_data:
+    driver: local
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  grafana_data:
+    driver: local
+  prometheus_data:
+    driver: local
+
+networks:
+  codelupe-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

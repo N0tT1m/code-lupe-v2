@@ -1,0 +1,158 @@
+# Ultra-Optimized Docker Compose for RTX 4090 Training
+# Simplified setup with localhost networking for maximum performance
+
+version: '3.8'
+
+services:
+  # Database for storing training metadata
+  postgres:
+    image: postgres:16-alpine
+    container_name: codelupe-postgres
+    environment:
+      - POSTGRES_DB=coding_db
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coding_user -d coding_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and job queues
+  redis:
+    image: redis:7-alpine
+    container_name: codelupe-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ultra-optimized trainer for RTX 4090
+  ultra-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.ultra-trainer
+    container_name: codelupe-ultra-trainer
+    runtime: nvidia
+    environment:
+      # Database connection (localhost)
+      - DATABASE_URL=postgres://coding_user:coding_pass@host.docker.internal:5432/coding_db
+      - REDIS_URL=redis://host.docker.internal:6379
+      
+      # Dataset paths (can be overridden)
+      - DATASET_PATHS=/app/ultra_datasets/dataset1.json,/app/ultra_datasets/dataset2.json
+      
+      # NVIDIA/CUDA optimizations
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
+      - CUDA_LAUNCH_BLOCKING=0
+      - TORCH_CUDNN_V8_API_ENABLED=1
+      - PYTHONUNBUFFERED=1
+      
+      # Memory optimizations for RTX 4090
+      - CUDA_MEMORY_FRACTION=0.98
+      - OMP_NUM_THREADS=12
+      - MKL_NUM_THREADS=12
+      
+      # Training configuration
+      - WANDB_PROJECT=codelupe-ultra-training
+      - OUTPUT_DIR=/app/models/codestral_ultra_optimized
+      
+    ports:
+      - "8091:8091"
+    network_mode: "host"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount your datasets here
+      - ./datasets:/app/datasets:ro
+      - ./ultra_datasets:/app/ultra_datasets:ro
+      
+      # Output directories
+      - ./models:/app/models
+      - ./checkpoints:/app/checkpoints
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      
+      # Hugging Face cache (optional)
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '24'
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Monitoring and metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: codelupe-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: codelupe-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_PLUGINS_PREINSTALL=grafana-clock-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  grafana_data:
+    driver: local
+  prometheus_data:
+    driver: local

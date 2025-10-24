@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeLupe Processing Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .chart-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .language-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .language-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .refresh-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px;
+        }
+        .refresh-btn:hover {
+            background: #45a049;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-processing { background: #FF9800; }
+        .status-completed { background: #4CAF50; }
+        .status-failed { background: #F44336; }
+        .status-pending { background: #9E9E9E; }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected {
+            background: #4CAF50;
+            color: white;
+        }
+        .disconnected {
+            background: #F44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <span class="status-indicator status-pending"></span>
+        Connecting...
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🚀 CodeLupe Processing Dashboard</h1>
+            <p>Real-time monitoring for Ryzen 9 3900X processing pipeline</p>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalJobs">-</div>
+                <div class="stat-label">Total Repositories</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="jobProgress" style="width: 0%"></div>
+                </div>
+                <small id="jobProgressText">0% complete</small>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="totalFiles">-</div>
+                <div class="stat-label">Files Processed</div>
+                <div style="margin-top: 10px;">
+                    <small id="processingRate">- files/sec</small>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="dataProcessed">-</div>
+                <div class="stat-label">Data Processed (MB)</div>
+                <div style="margin-top: 10px;">
+                    <small id="avgQuality">Avg Quality: -</small>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="languageCount">-</div>
+                <div class="stat-label">Languages Detected</div>
+                <div style="margin-top: 10px;">
+                    <small id="topLanguage">Top: -</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>📊 Language Distribution</h3>
+            <div class="language-list" id="languageList">
+                Loading...
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>🔄 Recent Activity</h3>
+            <div id="recentActivity">
+                <div style="text-align: center; padding: 20px;">
+                    <span class="status-indicator status-processing"></span>
+                    Fetching latest processing activity...
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>⚠️ Failed Jobs</h3>
+            <div id="failedJobs">
+                Loading failed jobs...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isConnected = false;
+        let lastUpdate = new Date();
+
+        // Simulated data fetch - replace with actual API calls to your PostgreSQL
+        async function fetchProcessingStats() {
+            try {
+                // This would be actual API calls to your backend
+                // For now, we'll simulate the data
+                
+                const mockData = {
+                    overview: {
+                        totalJobs: 1247,
+                        completedJobs: 892,
+                        processingJobs: 12,
+                        pendingJobs: 343,
+                        failedJobs: 0,
+                        completionPercentage: 71.5
+                    },
+                    files: {
+                        totalFiles: 234567,
+                        totalMB: 1842.3,
+                        avgQuality: 82.4,
+                        processingRate: 1250
+                    },
+                    languages: [
+                        { name: 'Python', count: 89234, percentage: 38.1 },
+                        { name: 'JavaScript', count: 67891, percentage: 29.0 },
+                        { name: 'TypeScript', count: 34567, percentage: 14.7 },
+                        { name: 'Go', count: 23456, percentage: 10.0 },
+                        { name: 'Rust', count: 12345, percentage: 5.3 },
+                        { name: 'Java', count: 6974, percentage: 2.9 }
+                    ],
+                    recentActivity: [
+                        { repo: 'tensorflow/tensorflow', files: 1234, status: 'completed', worker: 'worker_1' },
+                        { repo: 'microsoft/vscode', files: 892, status: 'processing', worker: 'worker_2' },
+                        { repo: 'pytorch/pytorch', files: 756, status: 'completed', worker: 'worker_3' }
+                    ],
+                    failedJobs: []
+                };
+
+                updateConnectionStatus(true);
+                return mockData;
+            } catch (error) {
+                updateConnectionStatus(false);
+                console.error('Failed to fetch data:', error);
+                return null;
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            const indicator = statusEl.querySelector('.status-indicator');
+            
+            if (connected) {
+                statusEl.className = 'connection-status connected';
+                statusEl.innerHTML = '<span class="status-indicator status-completed"></span>Connected';
+                isConnected = true;
+                lastUpdate = new Date();
+            } else {
+                statusEl.className = 'connection-status disconnected';
+                statusEl.innerHTML = '<span class="status-indicator status-failed"></span>Disconnected';
+                isConnected = false;
+            }
+        }
+
+        function updateDashboard(data) {
+            if (!data) return;
+
+            // Update overview stats
+            document.getElementById('totalJobs').textContent = data.overview.totalJobs.toLocaleString();
+            document.getElementById('totalFiles').textContent = data.files.totalFiles.toLocaleString();
+            document.getElementById('dataProcessed').textContent = data.files.totalMB.toFixed(1);
+            document.getElementById('languageCount').textContent = data.languages.length;
+
+            // Update progress bar
+            const progress = data.overview.completionPercentage;
+            document.getElementById('jobProgress').style.width = progress + '%';
+            document.getElementById('jobProgressText').textContent = 
+                `${progress.toFixed(1)}% complete (${data.overview.completedJobs}/${data.overview.totalJobs})`;
+
+            // Update additional stats
+            document.getElementById('processingRate').textContent = 
+                `${data.files.processingRate.toLocaleString()} files/sec`;
+            document.getElementById('avgQuality').textContent = 
+                `Avg Quality: ${data.files.avgQuality.toFixed(1)}`;
+            document.getElementById('topLanguage').textContent = 
+                `Top: ${data.languages[0]?.name || 'N/A'}`;
+
+            // Update language distribution
+            const languageList = document.getElementById('languageList');
+            languageList.innerHTML = data.languages.map(lang => `
+                <div class="language-item">
+                    <span>${lang.name}</span>
+                    <span>${lang.count.toLocaleString()} (${lang.percentage.toFixed(1)}%)</span>
+                </div>
+            `).join('');
+
+            // Update recent activity
+            const recentActivity = document.getElementById('recentActivity');
+            if (data.recentActivity.length > 0) {
+                recentActivity.innerHTML = data.recentActivity.map(activity => `
+                    <div style="padding: 10px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                        <span class="status-indicator status-${activity.status}"></span>
+                        <strong>${activity.repo}</strong> - ${activity.files.toLocaleString()} files 
+                        <small>(${activity.worker})</small>
+                    </div>
+                `).join('');
+            } else {
+                recentActivity.innerHTML = '<div style="text-align: center; padding: 20px;">No recent activity</div>';
+            }
+
+            // Update failed jobs
+            const failedJobs = document.getElementById('failedJobs');
+            if (data.failedJobs.length > 0) {
+                failedJobs.innerHTML = data.failedJobs.map(job => `
+                    <div style="padding: 10px; margin: 5px 0; background: rgba(244,67,54,0.2); border-radius: 5px;">
+                        <strong>${job.repo}</strong> - ${job.error}
+                    </div>
+                `).join('');
+            } else {
+                failedJobs.innerHTML = '<div style="text-align: center; padding: 20px; color: #4CAF50;">✅ No failed jobs</div>';
+            }
+        }
+
+        async function refreshData() {
+            const data = await fetchProcessingStats();
+            if (data) {
+                updateDashboard(data);
+            }
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+
+        // Initial load
+        refreshData();
+
+        // Update last refresh time
+        setInterval(() => {
+            const elapsed = Math.floor((new Date() - lastUpdate) / 1000);
+            if (elapsed > 60 && isConnected) {
+                updateConnectionStatus(false);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

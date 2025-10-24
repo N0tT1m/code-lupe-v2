@@ -1,0 +1,375 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "CodeLupe Processing Pipeline",
+    "tags": ["codelupe", "processing", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "🚀 Processing Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "codelupe_jobs_total{status=\"completed\"}",
+            "legendFormat": "Completed Jobs"
+          },
+          {
+            "expr": "codelupe_jobs_total{status=\"pending\"}",
+            "legendFormat": "Pending Jobs"
+          },
+          {
+            "expr": "codelupe_jobs_in_progress",
+            "legendFormat": "Jobs in Progress"
+          },
+          {
+            "expr": "codelupe_files_processed_total",
+            "legendFormat": "Total Files"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "📊 Processing Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(codelupe_files_processed_total[5m])",
+            "legendFormat": "Files/sec"
+          },
+          {
+            "expr": "rate(codelupe_bytes_processed_total[5m]) / 1024 / 1024",
+            "legendFormat": "MB/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "yAxes": [
+          {
+            "label": "Rate",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ],
+        "xAxis": {
+          "show": true,
+          "mode": "time"
+        },
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        }
+      },
+      {
+        "id": 3,
+        "title": "🔤 Language Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "codelupe_language_files_total",
+            "legendFormat": "{{ language }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "pie",
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          },
+          "displayLabels": ["name", "percent"]
+        }
+      },
+      {
+        "id": 4,
+        "title": "🏆 Quality Score Distribution",
+        "type": "histogram",
+        "targets": [
+          {
+            "expr": "codelupe_quality_score",
+            "legendFormat": "Quality Score"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "👥 Worker Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "codelupe_workers_active",
+            "legendFormat": "{{ worker_id }}"
+          },
+          {
+            "expr": "codelupe_worker_jobs_completed_total",
+            "legendFormat": "{{ worker_id }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "💾 Database Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_db_connections{state=\"open\"}",
+            "legendFormat": "Open Connections"
+          },
+          {
+            "expr": "codelupe_db_connections{state=\"idle\"}",
+            "legendFormat": "Idle Connections"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(codelupe_db_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile Query Time"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "yAxes": [
+          {
+            "label": "Connections / Seconds",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "🖥️ System Resources",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_system_cpu_usage_percent",
+            "legendFormat": "CPU Usage %"
+          },
+          {
+            "expr": "codelupe_system_memory_usage_bytes / 1024 / 1024 / 1024",
+            "legendFormat": "Memory Usage GB"
+          },
+          {
+            "expr": "codelupe_system_disk_usage_bytes{mountpoint=\"/\"} / 1024 / 1024 / 1024 / 1024",
+            "legendFormat": "Disk Usage TB"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "yAxes": [
+          {
+            "label": "Usage",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "📈 Repository Processing Timeline",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "increase(codelupe_files_processed_total[1h])",
+            "legendFormat": "Files Processed (Hourly)"
+          },
+          {
+            "expr": "increase(codelupe_jobs_total{status=\"completed\"}[1h])",
+            "legendFormat": "Jobs Completed (Hourly)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+        "yAxes": [
+          {
+            "label": "Count",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "🔍 Top Repositories by File Count",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(20, codelupe_repo_file_count)",
+            "legendFormat": "{{ repo_name }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "⚠️ Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(codelupe_errors_total[5m])",
+            "legendFormat": "{{ component }} - {{ error_type }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+        "yAxes": [
+          {
+            "label": "Errors/sec",
+            "show": true,
+            "min": 0
+          },
+          {
+            "show": true
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "🚨 Service Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=~\"codelupe-.*|crawler|downloader|processor\"}",
+            "legendFormat": "{{ job }}"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 40},
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "name",
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

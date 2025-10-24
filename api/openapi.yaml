@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: CodeLupe API
+  description: |
+    CodeLupe API for managing and querying GitHub repository data.
+    This API provides endpoints for repository discovery, search, and quality metrics.
+  version: 2.0.0
+  contact:
+    name: CodeLupe Team
+    url: https://github.com/yourusername/codelupe
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.codelupe.example.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Repositories
+    description: Repository management and search
+  - name: Languages
+    description: Programming language statistics
+  - name: Quality
+    description: Code quality metrics
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns the health status of the API server and its dependencies
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Server is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/repositories:
+    get:
+      tags:
+        - Repositories
+      summary: List repositories
+      description: Returns a paginated list of repositories
+      operationId: listRepositories
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryListResponse'
+
+  /api/v1/repositories/{id}:
+    get:
+      tags:
+        - Repositories
+      summary: Get repository by ID
+      description: Returns detailed information about a specific repository
+      operationId: getRepository
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Repository ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+        '404':
+          description: Repository not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/repositories/search:
+    get:
+      tags:
+        - Repositories
+      summary: Search repositories
+      description: Search repositories by query string, language, and minimum stars
+      operationId: searchRepositories
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (searches in name and description)
+          schema:
+            type: string
+        - name: language
+          in: query
+          description: Filter by programming language
+          schema:
+            type: string
+        - name: min_stars
+          in: query
+          description: Minimum number of stars
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Bad request (missing query parameter)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/repositories/stats:
+    get:
+      tags:
+        - Repositories
+      summary: Get repository statistics
+      description: Returns overall repository statistics including counts and top languages
+      operationId: getRepositoryStats
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryStats'
+
+  /api/v1/languages:
+    get:
+      tags:
+        - Languages
+      summary: List programming languages
+      description: Returns list of all programming languages with repository counts
+      operationId: listLanguages
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LanguageStats'
+
+  /api/v1/languages/{language}/stats:
+    get:
+      tags:
+        - Languages
+      summary: Get language statistics
+      description: Returns statistics for a specific programming language
+      operationId: getLanguageStats
+      parameters:
+        - name: language
+          in: path
+          required: true
+          description: Programming language name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageDetailStats'
+
+  /api/v1/quality/top:
+    get:
+      tags:
+        - Quality
+      summary: Get top quality repositories
+      description: Returns repositories with highest quality scores
+      operationId: getTopQualityRepos
+      parameters:
+        - name: limit
+          in: query
+          description: Number of repositories to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repository'
+
+  /api/v1/quality/distribution:
+    get:
+      tags:
+        - Quality
+      summary: Get quality score distribution
+      description: Returns distribution of quality scores across all repositories
+      operationId: getQualityDistribution
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QualityDistribution'
+
+components:
+  schemas:
+    Repository:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique repository identifier
+          example: 12345
+        full_name:
+          type: string
+          description: Full repository name (owner/repo)
+          example: "rust-lang/rust"
+        name:
+          type: string
+          description: Repository name
+          example: "rust"
+        description:
+          type: string
+          description: Repository description
+          example: "Empowering everyone to build reliable and efficient software"
+        language:
+          type: string
+          description: Primary programming language
+          example: "Rust"
+        stars:
+          type: integer
+          description: Number of GitHub stars
+          example: 95000
+        forks:
+          type: integer
+          description: Number of forks
+          example: 12000
+        quality_score:
+          type: integer
+          description: Quality score (0-100)
+          minimum: 0
+          maximum: 100
+          example: 95
+        download_status:
+          type: string
+          description: Download status
+          enum:
+            - pending
+            - downloading
+            - downloaded
+            - failed
+          example: "downloaded"
+        local_path:
+          type: string
+          description: Local filesystem path (if downloaded)
+          example: "/app/repos/rust-lang-rust"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when record was created
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when record was last updated
+
+    RepositoryListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Repository'
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        limit:
+          type: integer
+          description: Items per page
+          example: 20
+        total:
+          type: integer
+          description: Total number of repositories
+          example: 10000
+
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Repository'
+        count:
+          type: integer
+          description: Number of results returned
+          example: 15
+
+    RepositoryStats:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of repositories
+          example: 10000
+        downloaded:
+          type: integer
+          description: Number of downloaded repositories
+          example: 5000
+        avg_quality_score:
+          type: number
+          format: float
+          description: Average quality score
+          example: 75.5
+        top_languages:
+          type: array
+          items:
+            type: object
+            properties:
+              language:
+                type: string
+                example: "Rust"
+              count:
+                type: integer
+                example: 2500
+
+    LanguageStats:
+      type: object
+      properties:
+        language:
+          type: string
+          description: Programming language name
+          example: "Go"
+        count:
+          type: integer
+          description: Number of repositories
+          example: 1500
+        avg_stars:
+          type: number
+          format: float
+          description: Average number of stars
+          example: 500.5
+
+    LanguageDetailStats:
+      type: object
+      properties:
+        language:
+          type: string
+          description: Programming language name
+          example: "Python"
+        count:
+          type: integer
+          description: Number of repositories
+          example: 3000
+        avg_stars:
+          type: number
+          format: float
+          description: Average number of stars
+          example: 450.2
+        max_stars:
+          type: integer
+          description: Maximum stars
+          example: 50000
+        min_stars:
+          type: integer
+          description: Minimum stars
+          example: 5
+
+    QualityDistribution:
+      type: object
+      properties:
+        range:
+          type: string
+          description: Quality score range
+          example: "80-89"
+        count:
+          type: integer
+          description: Number of repositories in range
+          example: 1200
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+          example: "healthy"
+        time:
+          type: string
+          format: date-time
+          description: Current server time
+        database:
+          type: string
+          description: Database connection status
+          enum:
+            - ok
+            - error
+          example: "ok"
+        elasticsearch:
+          type: string
+          description: Elasticsearch connection status
+          enum:
+            - ok
+            - error
+          example: "ok"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Repository not found"

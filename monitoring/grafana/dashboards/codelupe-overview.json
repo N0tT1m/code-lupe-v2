@@ -1,0 +1,149 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Codelupe Pipeline Overview",
+    "tags": ["codelupe", "overview"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"codelupe-metrics\"}",
+            "legendFormat": "Metrics Exporter",
+            "refId": "A"
+          },
+          {
+            "expr": "up{job=\"ultra-trainer\"}",
+            "legendFormat": "Ultra Trainer",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Total Repositories",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "codelupe_total_repositories",
+            "legendFormat": "Repositories",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Training Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "codelupe_training_active",
+            "legendFormat": "Training Active",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "gray", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Repository Download Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(codelupe_repositories_downloaded_total[5m])",
+            "legendFormat": "Downloads/sec",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "yAxes": [
+          {"label": "Downloads/sec", "min": 0}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Processing Queue",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_processing_queue_size",
+            "legendFormat": "Queue Size",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "yAxes": [
+          {"label": "Files in Queue", "min": 0}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Dataset Size Growth",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_dataset_total_size_bytes",
+            "legendFormat": "Dataset Size",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "yAxes": [
+          {"label": "Bytes", "min": 0}
+        ]
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+  }
+}

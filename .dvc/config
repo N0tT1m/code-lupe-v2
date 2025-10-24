@@ -1,0 +1,11 @@
+[core]
+    remote = storage
+    autostage = true
+
+['remote "storage"']
+    url = s3://codelupe-data/datasets
+    # For local storage, use:
+    # url = /path/to/dvc-storage
+
+['remote "local"']
+    url = ./dvc-storage

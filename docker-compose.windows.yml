@@ -1,0 +1,372 @@
+# Windows Docker Compose for Complete Codelupe Pipeline
+# Repo Collection -> Processing -> Training on RTX 4090
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: codelupe-postgres
+    environment:
+      - POSTGRES_DB=coding_db
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - codelupe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coding_user -d coding_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and queues
+  redis:
+    image: redis:7-alpine
+    container_name: codelupe-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - codelupe-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Elasticsearch for search and indexing
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: codelupe-elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=codelupe-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - codelupe-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Step 1: GitHub Repository Crawler
+  crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile.crawler
+    container_name: codelupe-crawler
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      - POSTGRES_DB=coding_db
+      - REDIS_URL=redis://redis:6379
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - CRAWL_INTERVAL=3600
+      - MAX_REPOS_PER_RUN=100
+    networks:
+      - codelupe-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - G:\\logs:/app/logs
+      - G:\\crawler_data:/app/data
+    restart: unless-stopped
+
+  # Step 2: Repository Downloader
+  downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile.downloader
+    container_name: codelupe-downloader
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=coding_user
+      - POSTGRES_PASSWORD=coding_pass
+      - POSTGRES_DB=coding_db
+      - REDIS_URL=redis://redis:6379
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - REPOS_DIR=/app/repos
+      - DOWNLOAD_INTERVAL=1800
+      - MAX_CONCURRENT_DOWNLOADS=2  # Reduced from 5 to 2 for Windows stability
+    networks:
+      - codelupe-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      crawler:
+        condition: service_started
+    volumes:
+      - G:\\repos:/app/repos
+      - G:\\logs:/app/logs
+      - G:\\download_cache:/app/cache
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'      # Reduced from 8 to 4
+          memory: 4G     # Reduced from 8G to 4G
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep downloader || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Step 3: Code Processor and Dataset Creator
+  processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.processor
+    container_name: codelupe-processor
+    environment:
+      - DATABASE_URL=postgres://coding_user:coding_pass@postgres:5432/coding_db?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - REPOS_DIR=/app/repos
+      - DATASETS_DIR=/app/datasets
+      - PROCESSING_INTERVAL=900
+      - MIN_FILE_SIZE=100
+      - MAX_FILE_SIZE=100000
+      - SUPPORTED_LANGUAGES=python,javascript,typescript,rust,go,java,cpp,c
+      - GOMAXPROCS=12
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      downloader:
+        condition: service_started
+    volumes:
+      - G:\\repos:/app/repos
+      - G:\\datasets:/app/datasets
+      - G:\\logs:/app/logs
+      - G:\\processing_cache:/app/cache
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '12'
+          memory: 16G
+
+  # Step 4: Ultra-Optimized Trainer for RTX 4090
+  ultra-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.ultra-trainer
+    container_name: codelupe-ultra-trainer
+    runtime: nvidia
+    environment:
+      # Database connections
+      - DATABASE_URL=postgres://coding_user:coding_pass@postgres:5432/coding_db
+      - REDIS_URL=redis://redis:6379
+      
+      # Dataset configuration
+      - DATASETS_DIR=/app/datasets
+      - MIN_DATASET_SIZE=1000
+      - MAX_DATASET_SIZE=1000000
+      - TRAINING_CHECK_INTERVAL=300
+      
+      # NVIDIA/CUDA optimizations for Windows
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
+      - CUDA_LAUNCH_BLOCKING=0
+      - TORCH_CUDNN_V8_API_ENABLED=1
+      - PYTHONUNBUFFERED=1
+      
+      # Memory optimizations for RTX 4090
+      - CUDA_MEMORY_FRACTION=0.95
+      - OMP_NUM_THREADS=12
+      - MKL_NUM_THREADS=12
+      
+      # Training configuration
+      - WANDB_PROJECT=codelupe-windows-training
+      - OUTPUT_DIR=/app/models
+      - CHECKPOINT_DIR=/app/checkpoints
+      
+      # LoRA settings
+      - LORA_R=128
+      - LORA_ALPHA=32
+      - BATCH_SIZE=1
+      - GRADIENT_ACCUMULATION_STEPS=32
+      - LEARNING_RATE=1e-4
+      
+    ports:
+      - "8090:8090"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      processor:
+        condition: service_started
+    volumes:
+      - G:\\datasets:/app/datasets:ro
+      - G:\models:/app/models
+      - G:\checkpoints:/app/checkpoints
+      - G:\\logs:/app/logs
+      - G:\training_cache:/app/cache
+      # Windows HuggingFace cache
+      - G:\\huggingface_cache:/root/.cache/huggingface
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import requests; requests.get(\"http://localhost:8090/health\")' || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  # Metrics Exporter
+  metrics-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.metrics
+    container_name: codelupe-metrics
+    environment:
+      - DATABASE_URL=postgres://coding_user:coding_pass@postgres:5432/coding_db?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - METRICS_PORT=9094
+      - EXPORT_INTERVAL=30
+    ports:
+      - "9094:9094"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - G:\\logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9091/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: codelupe-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - codelupe-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - metrics-exporter
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana with custom dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: codelupe-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/codelupe-overview.json
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboard-config.yml:/etc/grafana/provisioning/dashboards/dashboard.yml:ro
+    networks:
+      - codelupe-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database Admin Interface
+  adminer:
+    image: adminer:4.8.1
+    container_name: codelupe-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - codelupe-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+
+volumes:
+  elasticsearch_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  grafana_data:
+    driver: local
+  prometheus_data:
+    driver: local
+
+networks:
+  codelupe-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

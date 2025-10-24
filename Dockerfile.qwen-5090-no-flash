@@ -1,0 +1,86 @@
+# Dockerfile for Qwen2.5-Coder-14B training on RTX 5090 (Without Flash Attention at build time)
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
+
+# Build arguments
+ARG MAX_JOBS=1
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libpq-dev \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set python3.11 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Set CUDA environment variables for building
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# Install PyTorch 2.2+ with CUDA 12.4 support
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# Install training dependencies (skip flash-attn for now)
+RUN pip3 install \
+    transformers==4.41.0 \
+    peft==0.11.0 \
+    trl==0.8.6 \
+    bitsandbytes==0.43.1 \
+    accelerate==0.30.0 \
+    datasets==2.19.0 \
+    scipy \
+    psycopg2-binary \
+    flask \
+    wandb \
+    huggingface_hub
+
+# Set working directory
+WORKDIR /app
+
+# Copy Python source
+COPY src/python/ /app/src/python/
+
+# Copy trainer script and dependencies
+COPY src/python/trainers/continuous_trainer_qwen_5090.py /app/
+COPY src/python/utils/*.py /app/
+
+# Create directories
+RUN mkdir -p /app/logs /app/models /app/checkpoints /app/cache /app/datasets
+
+# Environment variables for optimal RTX 5090 performance
+ENV CUDA_VISIBLE_DEVICES=0
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+ENV TORCH_CUDNN_V8_API_ENABLED=1
+ENV CUDA_LAUNCH_BLOCKING=0
+
+# Hugging Face settings
+ENV HF_HOME=/app/cache
+ENV TRANSFORMERS_CACHE=/app/cache
+ENV HF_DATASETS_CACHE=/app/cache
+
+# Create install script for flash-attention (to be run in container)
+RUN echo '#!/bin/bash\n\
+echo "Installing Flash Attention 2..."\n\
+pip3 install packaging ninja wheel\n\
+pip3 install flash-attn --no-build-isolation\n\
+echo "Flash Attention 2 installed successfully!"\n\
+' > /app/install-flash-attn.sh && chmod +x /app/install-flash-attn.sh
+
+# Run trainer
+CMD ["python3", "/app/continuous_trainer_qwen_5090.py"]

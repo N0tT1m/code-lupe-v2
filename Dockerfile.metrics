@@ -1,0 +1,32 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache git ca-certificates
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Add prometheus client
+RUN go get github.com/prometheus/client_golang/prometheus
+RUN go get github.com/prometheus/client_golang/prometheus/promhttp
+
+COPY metrics_exporter.go ./
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o metrics_exporter metrics_exporter.go
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /root/
+
+COPY --from=builder /app/metrics_exporter .
+
+EXPOSE 9094
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:9094/health || exit 1
+
+CMD ["./metrics_exporter"]

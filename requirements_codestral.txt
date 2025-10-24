@@ -1,0 +1,39 @@
+# Codestral-22B LoRA Training Requirements
+# Optimized for RTX 4090 with 24GB VRAM
+
+# Core ML libraries
+torch>=2.1.0
+transformers>=4.36.0
+datasets>=2.14.0
+tokenizers>=0.14.0
+huggingface_hub>=0.19.0
+
+# LoRA and quantization
+peft>=0.7.0
+bitsandbytes>=0.41.0
+
+# Training optimization
+accelerate>=0.24.0
+deepspeed>=0.12.0
+
+# Memory optimization
+optimum>=1.14.0
+
+# Utilities
+tqdm>=4.65.0
+numpy>=1.24.0
+scipy>=1.11.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+
+# Database connectivity
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+
+# Optional: For better performance (handled in Dockerfile for compatibility)
+# flash-attn>=2.3.0  # Flash Attention 2 for faster training (installed separately)
+# triton>=2.1.0      # Triton for optimized kernels (x86_64 only)
+
+# Development
+ipython>=8.10.0
+jupyter>=1.0.0

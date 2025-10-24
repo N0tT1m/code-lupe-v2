@@ -1,0 +1,69 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "codelupe_alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # CodeLupe Application Metrics (NEW)
+  - job_name: 'codelupe-metrics'
+    static_configs:
+      - targets: ['metrics-exporter:9094']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Infrastructure Services (FIXED for Docker network)
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']  # FIXED: was 'monglocalhostodb:27017'
+
+  # CodeLupe Processing Services (FIXED for Docker network)
+  - job_name: 'crawler'
+    static_configs:
+      - targets: ['crawler:8080']  # FIXED: Docker services don't expose :8000
+
+  - job_name: 'downloader'
+    static_configs:
+      - targets: ['downloader:8080']  # FIXED: Docker services don't expose :8000
+
+  - job_name: 'processor'
+    static_configs:
+      - targets: ['processor:8080']
+
+  # Health Checks for CodeLupe services
+  - job_name: 'codelupe-health'
+    static_configs:
+      - targets: 
+        - 'metrics-exporter:9094'
+        - 'crawler:8080'
+        - 'downloader:8080'
+        - 'processor:8080'
+    scrape_interval: 15s
+    metrics_path: /health

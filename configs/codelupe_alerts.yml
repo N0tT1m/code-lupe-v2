@@ -1,0 +1,188 @@
+groups:
+  - name: codelupe_processing
+    rules:
+      # Processing pipeline alerts
+      - alert: ProcessingStalled
+        expr: rate(codelupe_files_processed_total[10m]) == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: processor
+        annotations:
+          summary: "CodeLupe processing has stalled"
+          description: "No files have been processed in the last 10 minutes"
+
+      - alert: ProcessingRateLow
+        expr: rate(codelupe_files_processed_total[5m]) < 100
+        for: 10m
+        labels:
+          severity: warning
+          service: processor
+        annotations:
+          summary: "CodeLupe processing rate is low"
+          description: "Processing rate is {{ $value }} files/sec, which is below threshold"
+
+      - alert: TooManyFailedJobs
+        expr: codelupe_jobs_total{status="failed"} > 50
+        for: 5m
+        labels:
+          severity: critical
+          service: processor
+        annotations:
+          summary: "Too many failed processing jobs"
+          description: "{{ $value }} jobs have failed, indicating a systemic issue"
+
+      - alert: JobsStuckInProcessing
+        expr: codelupe_jobs_in_progress > 20
+        for: 30m
+        labels:
+          severity: warning
+          service: processor
+        annotations:
+          summary: "Jobs stuck in processing state"
+          description: "{{ $value }} jobs have been processing for over 30 minutes"
+
+  - name: codelupe_system
+    rules:
+      # System resource alerts
+      - alert: HighCPUUsage
+        expr: codelupe_system_cpu_usage_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage on CodeLupe system"
+          description: "CPU usage is {{ $value }}%, which is above 90%"
+
+      - alert: HighMemoryUsage
+        expr: codelupe_system_memory_usage_bytes / (1024*1024*1024) > 14
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage on CodeLupe system"
+          description: "Memory usage is {{ $value }}GB, which is above 14GB"
+
+      - alert: DiskSpaceLow
+        expr: codelupe_system_disk_usage_bytes{mountpoint="/"} / (1024*1024*1024*1024) > 0.8
+        for: 10m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}TB, which is above 80% capacity"
+
+  - name: codelupe_database
+    rules:
+      # Database alerts
+      - alert: DatabaseConnectionsHigh
+        expr: codelupe_db_connections{state="open"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "High number of database connections"
+          description: "{{ $value }} database connections are open"
+
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(codelupe_db_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile query time is {{ $value }} seconds"
+
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL database is not responding"
+
+  - name: codelupe_services
+    rules:
+      # Service health alerts
+      - alert: ServiceDown
+        expr: up{job=~"codelupe-.*|crawler|downloader|processor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "CodeLupe service is down"
+          description: "Service {{ $labels.job }} is not responding"
+
+      - alert: ElasticsearchDown
+        expr: up{job="elasticsearch"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: elasticsearch
+        annotations:
+          summary: "Elasticsearch is down"
+          description: "Elasticsearch service is not responding"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis service is not responding"
+
+  - name: codelupe_quality
+    rules:
+      # Data quality alerts
+      - alert: LowQualityFiles
+        expr: codelupe_quality_score < 50
+        for: 5m
+        labels:
+          severity: warning
+          service: processor
+        annotations:
+          summary: "Processing low quality files"
+          description: "Average quality score is {{ $value }}, which is below 50"
+
+      - alert: NoFilesProcessedRecently
+        expr: increase(codelupe_files_processed_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: critical
+          service: processor
+        annotations:
+          summary: "No files processed in the last hour"
+          description: "Processing pipeline appears to be completely stalled"
+
+  - name: codelupe_workers
+    rules:
+      # Worker monitoring
+      - alert: NoActiveWorkers
+        expr: sum(codelupe_workers_active) == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: processor
+        annotations:
+          summary: "No active workers"
+          description: "No workers are currently processing jobs"
+
+      - alert: WorkerImbalance
+        expr: max(codelupe_worker_jobs_completed_total) - min(codelupe_worker_jobs_completed_total) > 100
+        for: 30m
+        labels:
+          severity: warning
+          service: processor
+        annotations:
+          summary: "Worker load imbalance detected"
+          description: "Large difference in jobs processed between workers"

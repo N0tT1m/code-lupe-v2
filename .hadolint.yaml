@@ -1,0 +1,18 @@
+# Hadolint configuration for Dockerfile linting
+
+failure-threshold: warning
+
+ignored:
+  # Pinning versions is good, but we use specific versions in Dockerfile
+  - DL3008  # Pin versions in apt-get install
+  - DL3013  # Pin versions in pip install
+  # We use pipefail in our scripts
+  - DL4006  # Set the SHELL option -o pipefail
+
+trustedRegistries:
+  - docker.io
+  - nvidia
+
+label-schema:
+  author: maintainer
+  version: semver

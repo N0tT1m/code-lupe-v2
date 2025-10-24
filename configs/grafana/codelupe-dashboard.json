@@ -1,0 +1,69 @@
+{
+  "dashboard": {
+    "title": "CodeLupe System Overview",
+    "tags": ["codelupe", "system"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Repository Processing Rate",
+        "targets": [
+          {
+            "expr": "rate(codelupe_repos_processed_total[5m])",
+            "legendFormat": "Repos/sec"
+          }
+        ],
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "title": "Training Metrics - Loss",
+        "targets": [
+          {
+            "expr": "codelupe_training_loss",
+            "legendFormat": "Training Loss"
+          },
+          {
+            "expr": "codelupe_training_eval_loss",
+            "legendFormat": "Eval Loss"
+          }
+        ],
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "title": "Database Connections",
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "title": "GPU Utilization",
+        "targets": [
+          {
+            "expr": "nvidia_gpu_duty_cycle",
+            "legendFormat": "GPU {{gpu}}"
+          }
+        ],
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "title": "Memory Usage",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      }
+    ],
+    "refresh": "30s"
+  }
+}

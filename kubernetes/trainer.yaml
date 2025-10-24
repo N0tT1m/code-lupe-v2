@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trainer-config
+  namespace: codelupe
+data:
+  DATABASE_URL: "postgres://coding_user:coding_pass@postgres:5432/coding_db"
+  MIN_NEW_FILES: "1000"
+  MAX_DATASET_SIZE: "100000"
+  CHECK_INTERVAL: "300"
+  TRAINING_EPOCHS: "1"
+  PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:512"
+  CUDA_LAUNCH_BLOCKING: "0"
+  TORCH_CUDNN_V8_API_ENABLED: "1"
+  PYTHONUNBUFFERED: "1"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models-pvc
+  namespace: codelupe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: repos-pvc
+  namespace: codelupe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 500Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trainer
+  namespace: codelupe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trainer
+  template:
+    metadata:
+      labels:
+        app: trainer
+    spec:
+      containers:
+      - name: trainer
+        image: codelupe-trainer:latest
+        imagePullPolicy: Never
+        envFrom:
+        - configMapRef:
+            name: trainer-config
+        ports:
+        - containerPort: 8090
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: repos-storage
+          mountPath: /app/repos
+        - name: checkpoints-storage
+          mountPath: /app/checkpoints
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "12000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "32Gi"
+            cpu: "24000m"
+            nvidia.com/gpu: 1
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8090
+          initialDelaySeconds: 120
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8090
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: repos-storage
+        persistentVolumeClaim:
+          claimName: repos-pvc
+      - name: checkpoints-storage
+        emptyDir: {}
+      - name: logs-storage
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trainer
+  namespace: codelupe
+spec:
+  selector:
+    app: trainer
+  ports:
+    - port: 8090
+      targetPort: 8090
+      nodePort: 30090
+  type: NodePort

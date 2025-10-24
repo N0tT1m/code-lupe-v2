@@ -1,0 +1,37 @@
+cluster.name: "codelupe-cluster"
+node.name: "elasticsearch"
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+network.host: 0.0.0.0
+http.port: 9200
+discovery.type: single-node
+
+# Memory settings
+bootstrap.memory_lock: true
+indices.memory.index_buffer_size: 30%
+indices.fielddata.cache.size: 40%
+
+# Performance settings
+thread_pool.write.queue_size: 1000
+thread_pool.search.queue_size: 2000
+
+# Security settings (disabled for development)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# Monitoring settings
+xpack.monitoring.collection.enabled: false
+
+# Index settings
+action.auto_create_index: true
+action.destructive_requires_name: false
+
+# Search settings
+search.max_open_scroll_context: 1000
+indices.query.bool.max_clause_count: 10000
+
+# Logging
+logger.org.elasticsearch.deprecation: warn
+logger.org.elasticsearch.transport.netty4: warn

@@ -1,0 +1,54 @@
+{
+  "github_tokens": [
+    "YOUR_GITHUB_TOKEN_HERE"
+  ],
+  "storage": {
+    "primary_path": "//192.168.1.66/plex3/codelupe/repos",
+    "backup_path": "//192.168.1.66/plex3/codelupe/backup/repos",
+    "max_primary_gb": 14000,
+    "max_backup_gb": 10000
+  },
+  "performance": {
+    "workers_per_token": 4,
+    "repos_per_hour_per_token": 5000,
+    "max_requests_per_second": 2,
+    "concurrent_clones": 8
+  },
+  "quality_filters": {
+    "min_stars": 10,
+    "min_quality_score": 30,
+    "clone_quality_threshold": 70,
+    "max_repo_size_kb": 100000,
+    "min_recent_days": 365
+  },
+  "target_languages": [
+    "Python",
+    "Go",
+    "Dart",
+    "TypeScript",
+    "JavaScript",
+    "C#",
+    "Rust",
+    "SQL"
+  ],
+  "target_technologies": [
+    "angular",
+    "react",
+    "vue",
+    "flutter",
+    "postgresql",
+    "elasticsearch",
+    "mongodb",
+    "machine-learning",
+    "artificial-intelligence",
+    "tensorflow",
+    "pytorch",
+    "fastapi",
+    "django",
+    "gin",
+    "fiber",
+    "microservices",
+    "kubernetes",
+    "docker"
+  ]
+}

@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: CodeLupe API
+  description: GitHub repository indexing and AI training system
+  version: 0.1.0
+servers:
+  - url: http://localhost:8090
+    description: Trainer service
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy

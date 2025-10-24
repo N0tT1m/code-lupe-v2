@@ -1,0 +1,84 @@
+# DVC Pipeline Configuration
+# Run with: dvc repro
+
+stages:
+  crawl:
+    cmd: go run main.go
+    deps:
+      - main.go
+    outs:
+      - github_repos.db:
+          cache: false
+    metrics:
+      - logs/crawler_stats.json:
+          cache: false
+
+  download:
+    cmd: go run downloader.go download ./repos 5
+    deps:
+      - downloader.go
+      - github_repos.db
+    outs:
+      - repos/:
+          cache: true
+    metrics:
+      - logs/download_stats.json:
+          cache: false
+
+  process:
+    cmd: go run resumable_processor.go
+    deps:
+      - resumable_processor.go
+      - repos/
+    outs:
+      - processed_files.db:
+          cache: true
+
+  export_dataset:
+    cmd: python src/python/processors/export_dataset.py
+    deps:
+      - src/python/processors/export_dataset.py
+      - processed_files.db
+    params:
+      - export.quality_threshold
+      - export.max_samples
+    outs:
+      - datasets/training_data/:
+          cache: true
+    metrics:
+      - datasets/stats.json:
+          cache: false
+
+  train:
+    cmd: python src/python/trainers/continuous_trainer_qwen_5090.py --single-run
+    deps:
+      - src/python/trainers/continuous_trainer_qwen_5090.py
+      - datasets/training_data/
+    params:
+      - train.batch_size
+      - train.learning_rate
+      - train.lora_r
+      - train.lora_alpha
+    outs:
+      - models/qwen-codelupe/:
+          cache: true
+    metrics:
+      - models/metrics.json:
+          cache: false
+    plots:
+      - models/training_curves.csv:
+          x: step
+          y: loss
+
+params:
+  export:
+    quality_threshold: 70
+    max_samples: 100000
+
+  train:
+    batch_size: 4
+    gradient_accumulation_steps: 4
+    learning_rate: 0.00002
+    lora_r: 256
+    lora_alpha: 512
+    max_length: 4096

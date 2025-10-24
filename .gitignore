@@ -1,0 +1,120 @@
+# Environment variables (sensitive)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Configuration files with secrets
+configs/config.json
+config.json
+**/config.json
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Go build artifacts
+*.exe
+!*.exe.config
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+/build/
+
+# Go binaries (built locally)
+/crawler
+/downloader
+/main
+/fix_languages
+/test_ip_rotation
+/scraper.exe
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Application
+/logs/
+/repos/
+/coding-repos/
+/datasets/
+/models/
+/checkpoints/
+/cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg
+
+# Database files (should never be committed)
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Docker volumes
+/elasticsearch_data/
+/postgres_data/
+/mongodb_data/
+/redis_data/
+/grafana_data/
+/prometheus_data/
+
+# Test coverage
+coverage.out
+coverage.html
+*.cover
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+
+# Large files (use Git LFS if needed)
+*.tar.gz
+*.zip
+*.7z

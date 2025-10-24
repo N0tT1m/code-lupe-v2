@@ -1,0 +1,31 @@
+# Ultra-Optimized Training Requirements for RTX 4090
+# Codestral-22B with maximum performance optimizations
+
+# Core dependencies
+torch>=2.1.0
+transformers>=4.36.0
+accelerate>=0.25.0
+datasets>=2.15.0
+
+# Memory and speed optimizations
+bitsandbytes>=0.41.3
+peft>=0.7.0
+flash-attn>=2.5.0
+
+# Optional but recommended
+deepspeed>=0.12.0
+wandb>=0.16.0
+ninja>=1.11.0
+
+# Data processing
+jsonlines>=4.0.0
+datasets>=2.15.0
+psutil>=5.9.0
+
+# For better performance
+triton>=2.1.0
+xformers>=0.0.22
+
+# Development tools
+tqdm>=4.66.0
+colorama>=0.4.6

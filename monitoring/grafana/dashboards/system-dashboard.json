@@ -1,0 +1,248 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Codelupe System Resources",
+    "tags": ["codelupe", "system", "resources"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "15s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Usage by Container",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{name=~\"codelupe.*\"}[5m]) * 100",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "yAxes": [
+          {"label": "CPU %", "min": 0, "max": 100}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Memory Usage by Container",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{name=~\"codelupe.*\"}",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "yAxes": [
+          {"label": "Memory", "min": 0}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Disk I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_fs_reads_bytes_total{name=~\"codelupe.*\"}[5m])",
+            "legendFormat": "{{name}} Read",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(container_fs_writes_bytes_total{name=~\"codelupe.*\"}[5m])",
+            "legendFormat": "{{name}} Write",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "yAxes": [
+          {"label": "Bytes/sec", "min": 0}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Network I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_network_receive_bytes_total{name=~\"codelupe.*\"}[5m])",
+            "legendFormat": "{{name}} RX",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(container_network_transmit_bytes_total{name=~\"codelupe.*\"}[5m])",
+            "legendFormat": "{{name}} TX",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "yAxes": [
+          {"label": "Bytes/sec", "min": 0}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Container Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "container_last_seen{name=~\"codelupe.*\"}",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 16},
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Elasticsearch Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "elasticsearch_indices_docs",
+            "legendFormat": "Documents",
+            "refId": "A"
+          },
+          {
+            "expr": "elasticsearch_indices_store_size_bytes",
+            "legendFormat": "Index Size",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+        "yAxes": [
+          {"label": "Count/Bytes", "min": 0}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "PostgreSQL Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "pg_stat_database_tup_inserted{datname=\"coding_db\"}",
+            "legendFormat": "Inserts",
+            "refId": "A"
+          },
+          {
+            "expr": "pg_stat_database_tup_updated{datname=\"coding_db\"}",
+            "legendFormat": "Updates",
+            "refId": "B"
+          },
+          {
+            "expr": "pg_stat_database_numbackends{datname=\"coding_db\"}",
+            "legendFormat": "Active Connections",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+        "yAxes": [
+          {"label": "Operations", "min": 0}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Redis Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_connected_clients",
+            "legendFormat": "Connected Clients",
+            "refId": "A"
+          },
+          {
+            "expr": "redis_db_keys{db=\"db0\"}",
+            "legendFormat": "Keys in DB0",
+            "refId": "B"
+          },
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "Memory Used",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+        "yAxes": [
+          {"label": "Count/Bytes", "min": 0}
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Host System Resources",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(1 - rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100",
+            "legendFormat": "CPU Usage %",
+            "refId": "A"
+          },
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+            "legendFormat": "Memory Usage %",
+            "refId": "B"
+          },
+          {
+            "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100",
+            "legendFormat": "Disk Usage %",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+        "yAxes": [
+          {"label": "Percentage", "min": 0, "max": 100}
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "container",
+          "type": "query",
+          "query": "label_values(container_last_seen{name=~\"codelupe.*\"}, name)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    },
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+  }
+}

@@ -1,0 +1,123 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
+
+# Environment files
+# .env - commented out to allow copying into downloader container
+.env.*
+!.env.example
+!.env
+
+# Dependencies
+node_modules/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.out
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.hypothesis/
+coverage/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# CRITICAL: Large files that crash Docker daemon
+# Model files
+*.model
+*.bin
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+models/
+checkpoints/
+pretrained/
+
+# Dataset files
+datasets/
+ultra_datasets/
+*.jsonl
+*.parquet
+*.arrow
+
+# Repository clones (can be MASSIVE)
+repos/
+downloaded_repos/
+
+# Cache directories
+.cache/
+cache/
+__pycache__/
+.huggingface/
+wandb/
+.wandb/
+
+# Data directories
+data/
+crawler_data/
+download_cache/
+processing_cache/
+training_cache/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so

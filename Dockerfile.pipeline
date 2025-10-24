@@ -1,0 +1,27 @@
+# Dockerfile for Data Pipeline V2
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    redis==5.0.1 \
+    elasticsearch==8.11.0 \
+    psycopg2-binary==2.9.9 \
+    GitPython==3.1.40
+
+# Copy pipeline code
+COPY data_pipeline_v2.py /app/
+COPY crawler_to_redis.py /app/
+
+# Create directories
+RUN mkdir -p /app/repos /app/logs
+
+# Run pipeline
+CMD ["python", "/app/data_pipeline_v2.py"]

@@ -1,0 +1,106 @@
+# Dockerfile for Qwen2.5-Coder-14B training on RTX 5090
+FROM nvidia/cuda:12.6.1-devel-ubuntu22.04
+
+# Build arguments
+ARG MAX_JOBS=4
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libpq-dev \
+    postgresql-client \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
+
+# Install build dependencies first
+RUN pip3 install --no-cache-dir \
+    packaging \
+    ninja \
+    wheel \
+    setuptools
+
+# Set CUDA environment variables for building
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# Install PyTorch nightly with RTX 5090 support (compute capability 12.0)
+# PyTorch 2.7+ includes support for Blackwell architecture
+RUN pip3 install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu126
+
+# Install triton nightly (compatible with PyTorch nightly)
+RUN pip3 install --no-cache-dir --pre triton
+
+# Install Flash Attention for RTX 5090 (Blackwell, compute capability 12.0)
+# Build from source with proper CUDA architecture flags
+RUN git clone https://github.com/Dao-AILab/flash-attention.git /tmp/flash-attention && \
+    cd /tmp/flash-attention && \
+    git checkout main && \
+    TORCH_CUDA_ARCH_LIST="9.0;12.0" MAX_JOBS=${MAX_JOBS} pip3 install . --no-build-isolation && \
+    cd / && rm -rf /tmp/flash-attention || \
+    echo "Flash Attention installation failed - will use eager attention fallback"
+
+# Install training dependencies (use latest versions for better RTX 5090 support)
+RUN pip3 install \
+    transformers \
+    peft \
+    trl \
+    bitsandbytes \
+    accelerate \
+    datasets \
+    scipy \
+    psycopg2-binary \
+    flask \
+    wandb \
+    huggingface_hub \
+    prometheus_client
+
+# Copy Python source
+COPY src/python/ /app/src/python/
+
+# Copy trainer script and dependencies
+COPY src/python/trainers/continuous_trainer_qwen_5090.py /app/
+COPY src/python/utils/*.py /app/
+
+# Create directories
+RUN mkdir -p /app/logs /app/models /app/checkpoints /app/cache /app/datasets
+
+# Environment variables for optimal RTX 5090 performance
+ENV CUDA_VISIBLE_DEVICES=0
+ENV PYTORCH_ALLOC_CONF=max_split_size_mb:512
+ENV TORCH_CUDNN_V8_API_ENABLED=1
+ENV CUDA_LAUNCH_BLOCKING=0
+
+# Enable Flash Attention
+ENV FLASH_ATTENTION_FORCE_BUILD=TRUE
+
+# Hugging Face settings
+ENV HF_HOME=/app/cache
+ENV TRANSFORMERS_CACHE=/app/cache
+ENV HF_DATASETS_CACHE=/app/cache
+
+# Health check
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+  CMD python3 -c "import torch; print('GPU Available:', torch.cuda.is_available())" || exit 1
+
+# Expose metrics port
+EXPOSE 8090
+
+# Run trainer
+CMD ["python3", "/app/continuous_trainer_qwen_5090.py"]

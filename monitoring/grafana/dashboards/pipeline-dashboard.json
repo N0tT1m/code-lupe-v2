@@ -1,0 +1,242 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Codelupe Data Pipeline",
+    "tags": ["codelupe", "pipeline", "data"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Flow",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(codelupe_repos_crawled_total[5m])",
+            "legendFormat": "Repos Crawled/min",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(codelupe_repos_downloaded_total[5m])",
+            "legendFormat": "Repos Downloaded/min",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(codelupe_files_processed_total[5m])",
+            "legendFormat": "Files Processed/min",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "yAxes": [
+          {"label": "Rate per minute", "min": 0}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Repository Statistics",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "codelupe_total_repositories",
+            "legendFormat": "Total Repos",
+            "refId": "A"
+          },
+          {
+            "expr": "codelupe_repositories_downloading",
+            "legendFormat": "Downloading",
+            "refId": "B"
+          },
+          {
+            "expr": "codelupe_repositories_processed",
+            "legendFormat": "Processed",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "File Processing Stats",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "codelupe_total_files",
+            "legendFormat": "Total Files",
+            "refId": "A"
+          },
+          {
+            "expr": "codelupe_files_in_queue",
+            "legendFormat": "In Queue",
+            "refId": "B"
+          },
+          {
+            "expr": "codelupe_files_processed_today",
+            "legendFormat": "Processed Today",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Language Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "codelupe_files_by_language",
+            "legendFormat": "{{language}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Processing Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(codelupe_processing_errors_total[5m])",
+            "legendFormat": "Errors/min",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(codelupe_download_errors_total[5m])",
+            "legendFormat": "Download Errors/min",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+        "yAxes": [
+          {"label": "Errors per minute", "min": 0}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Storage Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_storage_repos_bytes",
+            "legendFormat": "Repository Storage",
+            "refId": "A"
+          },
+          {
+            "expr": "codelupe_storage_datasets_bytes",
+            "legendFormat": "Dataset Storage",
+            "refId": "B"
+          },
+          {
+            "expr": "codelupe_storage_models_bytes",
+            "legendFormat": "Model Storage",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+        "yAxes": [
+          {"label": "Bytes", "min": 0}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_db_connections_active",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          },
+          {
+            "expr": "codelupe_db_connections_idle",
+            "legendFormat": "Idle Connections",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+        "yAxes": [
+          {"label": "Connections", "min": 0}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Processing Queue Depth",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "codelupe_crawler_queue_size",
+            "legendFormat": "Crawler Queue",
+            "refId": "A"
+          },
+          {
+            "expr": "codelupe_downloader_queue_size",
+            "legendFormat": "Download Queue",
+            "refId": "B"
+          },
+          {
+            "expr": "codelupe_processor_queue_size",
+            "legendFormat": "Processing Queue",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+        "yAxes": [
+          {"label": "Queue Size", "min": 0}
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "service",
+          "type": "query",
+          "query": "label_values(up, job)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Service Restarts",
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "changes(process_start_time_seconds[1h]) > 0"
+        }
+      ]
+    },
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+  }
+}
